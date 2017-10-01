@@ -88,13 +88,18 @@ class EventLoop:
 
     def __init__(self):
         self.selector = DefaultSelector()
-
+        self._stopping = False
+        
     def run_until_complete(self, future):
         """Run a Future until completion and return its result"""
-        pass
+        def run_until_complete_cb(future):
+            self._stopping = True
+        future.add_done_callback(run_until_complete_cb)
+        self.run_forever()
+        return future.result()
 
     def run_forever(self):
-        while True:
+        while not self._stopping:
             events = self.selector.select()
             for key, event in events:
                 callback = key.data

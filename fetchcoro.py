@@ -44,5 +44,5 @@ def read_all(sock):
 
 if __name__ == "__main__":
     t = fetch('www.dabeaz.com')
-    t.add_done_callback(lambda f: print('Response size: {}'.format(len(f.result()))))
-    loop.run_forever()
+    response = loop.run_until_complete(t)
+    print('Response size: {}'.format(len(response)))
