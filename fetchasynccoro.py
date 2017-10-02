@@ -1,3 +1,6 @@
+""" Coroutine-based HTTP client, that uses a simple event loop, following the asyncio API.
+"""
+
 from eventloop import Future, Task, coroutine, loop, wait
 from selectors import EVENT_READ, EVENT_WRITE
 import socket
