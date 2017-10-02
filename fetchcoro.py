@@ -1,4 +1,4 @@
-from eventloop import Future, Task, task, loop
+from eventloop import Future, Task, task, loop, wait
 from selectors import EVENT_READ, EVENT_WRITE
 import socket
 
@@ -43,6 +43,8 @@ def read_all(sock):
     return b''.join(response)    
 
 if __name__ == "__main__":
-    t = fetch('www.dabeaz.com')
-    response = loop.run_until_complete(t)
-    print('Response size: {}'.format(len(response)))
+    t1 = fetch('www.dabeaz.com')
+    t2 = fetch('www.liberation.fr')
+    responses = loop.run_until_complete(wait([t1, t2]))
+    for r in responses:
+        print('Response: {}'.format(len(r)))

@@ -115,4 +115,16 @@ def task(gen_func):
         return task
     return wrapped
 
+@task 
+def wait(futures):
+    f = Future()
+    def all_done(future):
+        if all(map(lambda f: f.done(), futures)):
+            results = map(lambda f: f.result(), futures)
+            f.set_result(results)
+    for future in futures:
+        future.add_done_callback(all_done)
+    results = yield from f
+    return results
+
 loop = EventLoop()
