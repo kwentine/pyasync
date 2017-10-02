@@ -104,15 +104,26 @@ class EventLoop:
             for key, event in events:
                 callback = key.data
                 callback()
-            
+
+    def create_task(self, coro):
+        """Schedule a coroutine object
+        
+        Return a Task object
+        """
+        task = Task(coro)
+        # Needed here, but not in original source code where instead,
+        # a task schedules `_step()` to be called soon at
+        # instanciation. See asyncio/tasks.py Task/.__init__
+        task._step() 
+        return task
+
+loop = EventLoop()
                 
 def task(gen_func):
-    """Decorator function that wraps coroutine into a task"""
+    """Decorator function that wraps coroutine into a task."""
     def wrapped(*args, **kwargs):
         coro = gen_func(*args, **kwargs)
-        task = Task(coro)
-        task._step()
-        return task
+        return loop.create_task(coro)
     return wrapped
 
 @task 
@@ -127,4 +138,11 @@ def wait(futures):
     results = yield from f
     return results
 
-loop = EventLoop()
+def ensure_future(coro_or_future):
+    """ 
+    Future -> return it
+    Coroutine -> wrap in a task 
+    """
+    pass
+
+
