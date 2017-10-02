@@ -119,14 +119,14 @@ class EventLoop:
 
 loop = EventLoop()
                 
-def task(gen_func):
+def coroutine(gen_func):
     """Decorator function that wraps coroutine into a task."""
     def wrapped(*args, **kwargs):
         coro = gen_func(*args, **kwargs)
         return loop.create_task(coro)
     return wrapped
 
-@task 
+@coroutine
 def wait(futures):
     f = Future()
     def all_done(future):
@@ -135,8 +135,7 @@ def wait(futures):
             f.set_result(results)
     for future in futures:
         future.add_done_callback(all_done)
-    results = yield from f
-    return results
+    return (yield from f)
 
 def ensure_future(coro_or_future):
     """ 

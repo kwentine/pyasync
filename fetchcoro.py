@@ -1,8 +1,8 @@
-from eventloop import Future, Task, task, loop, wait
+from eventloop import Future, Task, coroutine, loop, wait
 from selectors import EVENT_READ, EVENT_WRITE
 import socket
 
-@task
+@coroutine
 def fetch(host):
     sock = yield from connect(host, 80)
     request = 'GET / HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n'.format(host)
