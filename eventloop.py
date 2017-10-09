@@ -1,4 +1,4 @@
-from selectors import DefaultSelector
+from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
 
 # Possible states a future can be in
 _PENDING = 'PENDING'
@@ -16,6 +16,7 @@ class Future:
     
     _STATE = _PENDING
     _result = None
+    _exception = None
 
     def __init__(self):
         self._callbacks = []
@@ -26,6 +27,8 @@ class Future:
     def result(self):
         if self._STATE != _FINISHED:
             raise InvalidStateError('Result is not ready')
+        if self._exception is not None:
+            raise self._exception
         return self._result
     
     def __iter__(self):
@@ -54,6 +57,10 @@ class Future:
 
         # Run callbacks
         self._schedule_callbacks()
+
+    def set_exception(self, exc):
+        assert isinstance(exc, Exception), 'must be exception instance'
+        self._exception = exc
         
     def _schedule_callbacks(self):
         """Run callbacks with self as single argument.
