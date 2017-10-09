@@ -1,8 +1,4 @@
-from time import sleep
-from datetime import datetime
-from urllib import request
 import socket
-
 
 def fib(n):
     """Compute nth Fibonacci number"""
@@ -14,17 +10,19 @@ def fib(n):
 def handle_client(conn):
     """Receive integer from client and send back its square"""
     while True:
-        data = conn.recv(256) # Blocking
         try:
+            data = conn.recv(256) # Blocking
             n = int(data.decode('ascii'))
-        except ValueError:
+        except Exception as e:
+            print(e)
+            conn.close()
             break
-        res = str(fib(n)) + '\n'
-        conn.send(res.encode('ascii'))
+        res = str(fib(n)).encode('ascii') + b'\n'
+        conn.send(res)
 
 def run_server(host='127.0.0.1', port=5000):
     s = socket.socket()
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((host, port))
     s.listen(5)
     print("Fibonacci server on port %d ..." % port)
