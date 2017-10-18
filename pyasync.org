@@ -1,0 +1,134 @@
+* Atelier asyncio
+
+** In
+Idea behin IO loops:
+- each IO operation involves a *file handler*
+- instead of doing the operation immediatly, record its type (read or
+  write)
+- poll all filehandlers regularly
+- when one is ready to read/write, run all the operations that were
+  waiting to read/write
+
+** Plan
+
+- Demos
+  - Temps de calcul des nombres de Finonacci
+    - lister les 10 premiers
+    - Temps de calcul fib(30)
+  - Serveur synchrone
+    - deux client netcat : l'un suspendu
+    - client rapide
+    - client lent
+
+Un problème simple: serveur TCP qui calcule les nombres de fibonacci.
+Deux types de clients: l'un dit 'rapide', dont les requêtes ont un
+coût de calcul quasi nul; l'autre dit 'lent', dont les requêtes
+nécessitent un long temps de calcul.
+
+- Les limitations du synchrone
+  - illustration simple
+- Recettes et ingrédients de l'asynchrone
+  - Multi-threading :: "preemptive multitasking"
+    - The infamous GIL 
+  - Single threaded :: "cooperative multitasking"
+    - Non-blocking sockets and OS polling
+    - coroutines
+    - Futures
+- Construire différentes implémentations
+  - Synchrone
+  - Asynchrone
+    - Plusieurs fils d'exécution (multi-threaded)
+    - Un seul fil d'exécution (single threaded)
+      - Callback style
+      - Coroutine style
+- Comparer les performances face à une combinaison de clients
+  lents/rapides
+- Montrer comment utiliser asyncio pour remplacer nos
+  implémentations asynchrones faites maison
+
+
+1. Threads
+2. Non-blocking sockets, I/O polling and callbacks
+   1. fibservcb.py
+      Lecture non linéaire du programme. "Callback hell"
+3. Coroutines
+   1. Rappels sur les générateurs
+   2. Idée générale (illustration event loop)
+   3. fibservcoro2.py
+      Risque de bloquer la boucle avec un calcul coûteux
+4. Threads + coroutines
+   1. Futures
+5. Avec asyncio
+   1. Interface de bas niveau
+   2. Interface de haut niveau
+
+** Thématiques
+
+- Coroutines: 
+  - fonction capable de suspendre son exécution, en redonnant le
+    contrôle au code appelant.
+  - 'yield' :: 'to give up, as to superior power or authority'
+    - càd, abandonner le contrôle
+  - permet de rendre explicite les changements de contexte
+    - collaboration entre les tâches ('cooperative multitasking')
+
+- Threads
+  - GIL : dans un processus python, un seul thread qui s'exécute
+    - par opposition à plusieurs threads qui pourraient avancer en même
+      temps sur deux coeurs du même processeur
+    - threads inefficaces pour 'paralléliser' des opérations de calcul
+      (CPU bound)
+    - solution possible pour la gestions de tâches faisant de l'I/O
+  - les changements d'un thread à l'autre (context switching) sont
+    décidés par l'OS
+    - préemption (penser 'compétition') entre les tâches
+    - nécessité de réglementer l'accès à la mémoire partagée (racing
+      condition, locks)
+- Futures
+  - representation d'un résultat à venir
+  - interface pour enregistrer des actions à prendre lorsque le
+      résultat est disponible
+
+- Différents niveaux d'abstraction asyncio:
+
+  - [[https://docs.python.org/3.6/library/asyncio-eventloop.html#watch-file-descriptors][Watching file descriptors]] (callbacks)
+    - loop.add_reader(fd, callback, *args)
+    - loop.add_writer(fd, callback, *args)
+
+  - [[https://docs.python.org/3.6/library/asyncio-eventloop.html#asyncio.AbstractEventLoop.sock_recv][Low-level socket operations]] (coroutines)
+    Sockets involved must be *non-blocking*
+    - I/O operations
+      - loop.sock_accept(sock)
+      - loop.sock_recv(sock, nbytes)
+      - loop.sock_sendall(sock, data)
+    - Thread operations
+      - concurrent.futures.ThreadPoolExecutor
+      - loop.run_in_executor(executor, func)
+
+  - [[https://docs.python.org/3.6/library/asyncio-stream.html][Streams]] (coroutine-based API)
+    - asyncio.start_server(client_connected_cb, host, port)
+      - callback is passed (reader, writer) object
+      - returns a Server object
+    - StreamReader.read(nbytes)
+    - StreamWriter.write(data) (simple function, not coroutine)
+
+  - Potocols
+
+- Tornado
+  - tornado.tcpserver.TCPServer
+    - single threaded TCP server
+    - built on top of IOStream
+
+** Analyse comparative des performances
+
+Lorsque cb + thread, on voit le taux de requêtes baisser lorsque le
+nombre de clients longs est égal au nombre de threads dans la pool.
+
+- fibservcoro3thrd.py
+Task is awaken in executor thread, where it registers for I/O
+read. That unblocks the main event loop. This means that there could
+be racing conditions on the selector..
+
+| Version        | fast  (req/s) | slow (30) | 2 * fast (req/s) | fast + slow (req/s, time) | 2 * slow (time) |
+|----------------+---------------+-----------+------------------+---------------------------+-----------------|
+| fibservsync.py | 38000         |      0.25 |                  |                           |                 |

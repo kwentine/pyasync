@@ -1,0 +1,40 @@
+#+TITLE: Techniques de programmation asynchrone en Python
+* Programme
+- Implémenter un serveur qui calcule les nombres de Fibonacci
+- Version synchrone
+  - Limites
+- Différentes versions asynchrones
+  - Threads
+  - Callbacks
+  - Boucle événementielle et coroutines
+  - Utilisation d'asyncio
+* Le serveur Fibonacci et ses clients
+** Les nombres de Fibonacci
+- Algorithme récursif
+#+BEGIN_SRC python
+def fib(n):
+    """Compute n-th Fibonacci number"""
+    if n <= 1: return n
+    else: return fib(n-1) + fib(n-2)
+#+END_SRC
+- La suite croît très vite
+  - $Fib(30) = 832 040$
+  - $Fib(40) = 102 334 155$
+- Calcul rapidement très lent...
+  - Nous permettra de simuler des calculs coûteux en CPU
+** Le serveur
+- Accepte les connexions TCP
+- Attend du client connecté un entier $n$
+- Calcule revoie $fib(n)$ 
+** Deux types de clients
+- Client rapide
+  - requêtes fréquentes et peu coûteuses
+  - combien de requêtes/seconde supporte notre serveur ?
+- Client lent
+  - requêtes coûteuses en calcul (35ème nombre de Fibonacci)
+  - combien de temps le serveur met il à répondre ?
+- Idée: utiliser différentes combinaisons de ces clients et observer
+  les performances du serveur
+* Limitations du synchrone
+- Un client à la fois
+- Connexion potentiellement inutilisée

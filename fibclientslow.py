@@ -4,7 +4,7 @@ import time
 
 # Which Fibonacci number to ask for
 # Controls the burden we want to put on the server
-n = sys.argv[1] if len(sys.argv) > 1 else 30
+n = sys.argv[1] if len(sys.argv) > 1 else 33
 
 # Connect to Fibserver
 s = socket.socket()
