@@ -19,6 +19,10 @@ Idea behin IO loops:
     - deux client netcat : l'un suspendu
     - client rapide
     - client lent
+  - Serveur avec Threads
+    - deux connexions TELNET en même temps
+    - deux clients rapides 
+      - observer sur htop
 
 Un problème simple: serveur TCP qui calcule les nombres de fibonacci.
 Deux types de clients: l'un dit 'rapide', dont les requêtes ont un
@@ -129,6 +133,9 @@ Task is awaken in executor thread, where it registers for I/O
 read. That unblocks the main event loop. This means that there could
 be racing conditions on the selector..
 
-| Version        | fast  (req/s) | slow (30) | 2 * fast (req/s) | fast + slow (req/s, time) | 2 * slow (time) |
-|----------------+---------------+-----------+------------------+---------------------------+-----------------|
-| fibservsync.py | 38000         |      0.25 |                  |                           |                 |
+| Version        | fast  (req/s) | 2 * fast (req/s) | slow (33) | 2 * slow (time) | fast + slow (req/s, time) |
+|----------------+---------------+------------------+-----------+-----------------+---------------------------|
+| fibservsync.py |         38000 |                  |         1 |                 |                           |
+| fibservthrd.py |         34000 |            17000 |         1 |             2.1 | 100 r/s 1s                |
+| fibservcb.py   |         33000 |            20000 |       1.1 |             2.1 | 1 r/s   1.1s              |
+

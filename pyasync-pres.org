@@ -8,8 +8,8 @@
   - Callbacks
   - Boucle événementielle et coroutines
   - Utilisation d'asyncio
-* Le serveur Fibonacci et ses clients
-** Les nombres de Fibonacci
+
+* Caclcul des nombres de Fibonacci
 - Algorithme récursif
 #+BEGIN_SRC python
 def fib(n):
@@ -22,11 +22,11 @@ def fib(n):
   - $Fib(40) = 102 334 155$
 - Calcul rapidement très lent...
   - Nous permettra de simuler des calculs coûteux en CPU
-** Le serveur
+* Le serveur synchrone
 - Accepte les connexions TCP
 - Attend du client connecté un entier $n$
 - Calcule revoie $fib(n)$ 
-** Deux types de clients
+* Deux types de clients
 - Client rapide
   - requêtes fréquentes et peu coûteuses
   - combien de requêtes/seconde supporte notre serveur ?
@@ -38,3 +38,33 @@ def fib(n):
 * Limitations du synchrone
 - Un client à la fois
 - Connexion potentiellement inutilisée
+** TODO Vision schématique
+- mentionner le GIL (context switching)
+* Threads
+- Idée : créer un thread par connexion entrante
+#+BEGIN_SRC python
+def run_server(host='127.0.0.1', port=5000):
+    s = socket.socket()
+    # ...
+    s.listen(5)
+    while True:
+        conn, addr = s.accept() # Blocking
+        print('Connection from {}.'.format(addr))
+        # Handle client in a separate thread, 
+        # and go back to listening.
+        Thread(target=handle_client, args=(conn,)).start() 
+#+END_SRC
+- Avantage : permet de servir plusieurs client à la fois
+- Inconvénients : coûteux en ressources
+  - L'OS ne peux pas créer un nombre illimité de threads 
+** Observations
+- Client rapide : moins de req/sec
+  - coût de la création des threads
+- Deux clients rapides : req/sec divisé par deux
+- Rapide + lent 
+  - req/sec chute drastiquement
+  - client lent inaffecté
+- GIL
+    - Un thread s'exécute à la fois dans l'interpréteur
+    - priorité donnée au thread gourmand en CPU
+* 
