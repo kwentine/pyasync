@@ -1,12 +1,6 @@
+from fib import fib
 from eventloop import *
 import socket
-
-def fib(n):
-    """Compute nth Fibonacci number"""
-    if n <= 1:
-        return n
-    else:
-        return fib(n-1) + fib(n-2)
 
 def handle_client(conn):
     """Receive integer from client and send back its square"""

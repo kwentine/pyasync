@@ -1,4 +1,14 @@
-#+TITLE: Techniques de programmation asynchrone en Python
+#+OPTIONS: author:nil timestamp:nil
+#+OPTIONS: reveal_center:t reveal_progress:t reveal_history:nil reveal_control:t
+#+OPTIONS: reveal_rolling_links:t reveal_keyboard:t reveal_overview:t num:nil
+#+OPTIONS: reveal_width:1200 reveal_height:800
+#+OPTIONS: toc:1
+#+REVEAL_MARGIN: 0.1
+#+REVEAL_TRANS: cube
+#+REVEAL_THEME: moon
+#+REVEAL_HLEVEL: 2
+#+TITLE: Programmation asynchrone en Python
+#+DATE: 20/10/2017
 * Programme
 - Implémenter un serveur qui calcule les nombres de Fibonacci
 - Version synchrone
@@ -20,26 +30,49 @@ def fib(n):
 - La suite croît très vite
   - $Fib(30) = 832 040$
   - $Fib(40) = 102 334 155$
-- Calcul rapidement très lent...
-  - Nous permettra de simuler des calculs coûteux en CPU
-* Le serveur synchrone
+- Le calcul devient rapidement coûteux
+  - permettra de simuler des requêtes gourmandes en CPU
+** Pour Baptiste
+- Une version plus efficace en LISP
+#+BEGIN_SRC elisp
+  (defun fib (n)
+    "Compute n-th Fibonacci number iteratively"
+      (defun fib-iter (a b n)
+          (if (= n 0)
+              a
+            (fib-iter b (+ b a) (- n 1))))
+    (fib-iter 0 1 n))
+
+  (fib 10) ;; returns 55
+#+END_SRC
+* Le serveur ses clients
+** Serveur synchrone 
 - Accepte les connexions TCP
 - Attend du client connecté un entier $n$
-- Calcule revoie $fib(n)$ 
-* Deux types de clients
-- Client rapide
-  - requêtes fréquentes et peu coûteuses
-  - combien de requêtes/seconde supporte notre serveur ?
-- Client lent
-  - requêtes coûteuses en calcul (35ème nombre de Fibonacci)
-  - combien de temps le serveur met il à répondre ?
-- Idée: utiliser différentes combinaisons de ces clients et observer
-  les performances du serveur
+- Calcule puis renvoie $fib(n)$ 
+- Attend un entier etc...
+La fermeture de la connexion est à l'initiative du client.
+Code : =fibservsync.py=
+** Clients : le frénétique et l'exigeant
+
+Client rapide 
+ - requêtes fréquentes et peu coûteuses
+ - combien de requêtes/seconde supporte notre serveur ?
+Client lent
+ - requêtes coûteuses en calcul (35ème nombre de Fibonacci)
+ - combien de temps le serveur met-il à répondre ?
+
+/Idée : Utiliser différentes combinaisons de ces clients pour évaluer
+les performances du serveur/
+
+Code
+- =fibclientslow.py=
+- =fibclientfast.py=
+
+** Démo
 * Limitations du synchrone
-- Un client à la fois
-- Connexion potentiellement inutilisée
-** TODO Vision schématique
-- mentionner le GIL (context switching)
+Et les alternatives qu'on va explorer
+[[./img/sync-async.png][illustration]]
 * Threads
 - Idée : créer un thread par connexion entrante
 #+BEGIN_SRC python
@@ -64,7 +97,73 @@ def run_server(host='127.0.0.1', port=5000):
 - Rapide + lent 
   - req/sec chute drastiquement
   - client lent inaffecté
+- Rapide + rapide
+  - Requêtes deux fois plus lentes
 - GIL
-    - Un thread s'exécute à la fois dans l'interpréteur
-    - priorité donnée au thread gourmand en CPU
-* 
+  - Un thread s'exécute à la fois dans l'interpréteur
+  - priorité donnée au thread gourmand en CPU
+
+* Callbacks
+
+- Idée : demander au système d'exploitation de prévenir quand des
+  événements arrivent du réseau
+- Lier des callbacks aux événements
+
+** Selecteurs
+(illustration sélecteur)
+- selectors.DefaultSelector
+
+** Boucle événementielle
+
+** Implémentation 
+
+** Observations
+- 
+* Coroutines
+- Threads : 'preemptive multitasking'
+  - compétition entre les threads
+  - OS décide des changements de contexte
+- Coroutines : 'cooperative multitasking'
+  - coopération entre les tâches
+  - changements de contexte explicites
+    - "je choisis de suspendre mon exécution quand je dois attendre de l'I/O"
+** Le principe
+- fonction capable de suspendre temporairement son exécution
+- mot clé `yield` : [définition]
+- exemple de coroutine
+#+BEGIN_SRC python 
+
+#+END_SRC
+** Exécution coopérative d'une liste de tâches
+- une queue contient les tâches en cours
+- un ordonnanceur (/scheduler/) les avance tour à tour
+#+BEGIN_SRC python
+-def run_until_complete(tasks):
+    while tasks:
+        # Fetch next task from the beginning of the queue
+        coro = tasks.popleft()
+        try:
+            # Advance task one step, until next 'yield'
+            next(coro)
+        except StopIteration as exc:
+            # The task finished, and its return value is 
+            # retrieved from the exception.
+            print('Scheduler: task returned', exc.value)
+            continue
+        else:
+            # Put the task back at the end of the queue
+            tasks.append(coro)
+#+END_SRC
+** Application à Fibserver
+La boucle événementielle (/event loop/) :
+  1. dépile les tâches, les fait avancer
+  2. les met en attente dans le sélecteur
+  3. les rempile quand les sockets sont prêtes
+[[file:img/event-loop.png][Illustration]]
+[[./img/event-loop.png]]
+* Coroutines avec threads
+- Idée : déléguer uniquement les calculs qui bloquent la boucle à des Threads
+* Asyncio
+* Tornado
+* Conclusion
+Pas le temps, il faut *vraiment* que j'aille me coucher...

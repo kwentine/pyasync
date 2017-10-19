@@ -1,20 +1,31 @@
 # Simple round robin scheduler
 from collections import deque
 
-def countdown(n):
-    print('Counting down from', n)
-    while n:
-        yield n
-        n -= 1
+def task1():
+    print('Task 1: step1')
+    yield
+    print('Task 1: step2')
+    yield
+    print('Task 1: done')
+    return 1
+
+def task1():
+    print('Task 2: step1')
+    yield
+    print('Task 2: step2')
+    yield
+    print('Task 2: done')
+    return 1
+
 
 tasks = deque([countdown(5), countdown(10), countdown(15)])
         
 while tasks:
     coro = tasks.popleft()
     try:
-        result = next(coro)
-        print(result)
-    except StopIteration:
+        next(coro)
+    except StopIteration as exc:
+        print('Scheduler: task returned', exc.value)
         continue
     else:
         tasks.append(coro)
