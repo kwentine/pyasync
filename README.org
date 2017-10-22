@@ -43,7 +43,7 @@ implementation using asyncio's event loop and APIs.
 - [[file:fibservers/fibservcorothrd.py][fibservcorothrd.py]]
 
   Asynchronous I/O handled by an event loop in the main thread, and
-  computation of Fibonacci numbers delegated to a `ThreadPoolExecutor`
+  computation of Fibonacci numbers delegated to a [[https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.ThreadPoolExecutor][ThreadPoolExecutor]].
 
 ** Asyncio variants
 
@@ -68,12 +68,12 @@ implementation using asyncio's event loop and APIs.
 In addition to these, I adapted David Beazley's client implementations to
 play around and test performance:
 
-- `fibclientfast.py`
+- [[file:fibservers/fibclientfast.py][fibclientfast.py]]
 
   Repeatedly send short-time requests and monitor the requests-per-second
   rate.
 
-- `fibclientslow.py` 
+- [[file:fibservers/fibclientslow.py][fibclientslow.py]]
 
   Send comparatively CPU-demanding requests (computing Fib(33)) and
   monitor the time-per-request.
@@ -101,6 +101,7 @@ Here are the results of the tests performed on my machine:
 | Coroutines and threads |   5000 |    3000 |      1 |      2 |           50 |            1 |
 | Streams                |   4500 |    2600 |      1 |      2 |           40 |            1 |
 
+
 ** Presentation
 
 The notes of a short presentation I gave on the topic, and a reveal.js
@@ -114,6 +115,7 @@ version of the event loop, tasks and futures, while mimicking the
 API. It tries to capture the essential logic, while overlooking error
 handling and many other subtleties. This work in progress is in the
 [[file:eventloop/][eventloop]] directory.
+
 
 * Web clients
 
