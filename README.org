@@ -67,8 +67,10 @@ play around and test performance:
   Send comparatively CPU-demanding requests (computing Fib(33)) and
   monitor the time-per-request.
 
-Using various combinations of these allows to get an idean of some
+Using various combinations of these allows to get an idea of some
 tradeoffs involved when doing asynchronous programming in Python. 
+
+Here are the results of the tests performed on my machine: 
 
 
 | Server version         | 1 fast | 2  fast | 1 slow | 2 slow |  fast + slow |  fast + slow |
