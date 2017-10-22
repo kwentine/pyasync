@@ -1,0 +1,369 @@
+#+OPTIONS: author:nil timestamp:nil
+#+OPTIONS: reveal_center:t reveal_progress:t reveal_history:nil reveal_control:t
+#+OPTIONS: reveal_rolling_links:t reveal_keyboard:t reveal_overview:t num:nil
+#+OPTIONS: reveal_width:1200 reveal_height:800
+#+OPTIONS: toc:1
+#+REVEAL_MARGIN: 0.1
+#+REVEAL_TRANS: cube
+#+REVEAL_THEME: moon
+#+REVEAL_HLEVEL: 3
+#+TITLE: Programmation asynchrone en Python
+#+DATE: 20/10/2017
+* Les nombres de Fibonacci
+- Algorithme récursif
+#+BEGIN_SRC python
+def fib(n):
+    """Compute n-th Fibonacci number"""
+    if n <= 1: return n
+    else: return fib(n-1) + fib(n-2)
+#+END_SRC
+- La suite croît très vite
+  - $Fib(30) = 832 040$
+  - $Fib(40) = 102 334 155$
+- Le calcul devient rapidement coûteux
+  - permettra de simuler des requêtes gourmandes en CPU
+#+REVEAL: split
+/Pour BRO/
+- Une version plus efficace en LISP
+#+BEGIN_SRC elisp
+  (defun fib (n)
+    "Compute n-th Fibonacci number iteratively"
+      (defun fib-iter (a b n)
+          (if (= n 0)
+              a
+            (fib-iter b (+ b a) (- n 1))))
+    (fib-iter 0 1 n))
+
+  (fib 10) ;; returns 55
+#+END_SRC
+* Le serveur et ses clients
+** Serveur synchrone 
+- Accepte les connexions TCP
+- Attend du client connecté un entier $n$
+- Calcule puis renvoie $fib(n)$ 
+- Attend un entier etc...
+La fermeture de la connexion est à l'initiative du client.
+
+Code : =fibservsync.py=
+** Clients : le frénétique et l'exigeant
+
+Client rapide 
+ - requêtes fréquentes et peu coûteuses
+ - combien de requêtes/seconde servies ?
+Client lent
+ - requêtes coûteuses en calcul (35ème nombre de Fibonacci)
+ - combien de temps le serveur met-il à répondre ?
+
+/Idée : Utiliser différentes combinaisons de ces clients pour évaluer
+les performances du serveur/
+
+Code
+- =fibclientslow.py=
+- =fibclientfast.py=
+
+** Démo
+#+ATTR_REVEAL: :frag appear
+- un seul client servi à la fois
+- même si la connexion est inutilisée...
+#+REVEAL: split
+[[./img/sync.png]]
+* Threads
+
+/"Fils d'exécution" indépendants, partageant les ressources du
+processus auxquels ils appartiennent./
+
+
+- Si un processus s'exécute sur un CPU avec plusieurs coeurs, l'OS est
+  capable d'en exécuter plusieurs *en même temps*
+
+- Autrement, l'OS décide du partage du temps d'exécution entre les threads
+  (/context switching/)
+
+- Exemple: les onglets d'un navigateur s'exécutent dans des threads séparés 
+
+#+REVEAL: split
+
+file:img/threads-parallel.png
+
+#+REVEAL: split
+
+/Idée : le serveur peut créer un thread pour s'occuper de chaque
+nouveau client qui se connecte./
+
+- Permet d'accepter de nouvelles connexions dans le thread principal,
+  pendant que les autres clients sont servis par des threads séparés
+
+#+BEGIN_SRC python
+def run_server(host='127.0.0.1', port=5000):
+    s = socket.socket()
+    # ...
+    s.listen(5)
+    while True:
+        conn, addr = s.accept() # Block until a connexion comes in
+        print('Connection from {}.'.format(addr))
+        # Handle client in a separate thread, 
+        # and go back to accepting incoming connexions
+        Thread(target=handle_client, args=(conn,)).start() 
+#+END_SRC
+
+** Demo
+#+ATTR_REVEAL: :frag appear
+- Client frénétique : moins de requêtes par seconde (req/s)
+  - coût de la création des threads
+- Deux clients frénétiques : req/s divisé par deux
+- Frénétique + exigeant
+  - req/s chute drastiquement pour le frénétique
+  - client exigeant inaffecté
+
+** Limites des threads
+   /De manière générale/
+- nombre de threads limité par les ressources système
+  - grand nombre de connexions entrantes : risque de saturation
+- coût de la création des threads
+  - solution possible : utilisation de thread pools
+
+#+REVEAL: split
+/Limitations propres à Python/
+- /Global interpreter lock/ (aka 'the infamous GIL') 
+- processus python : un seul thread s'exécute à la fois
+- illusion de parallélisme obtenue par concurrence
+  - /Context switching/
+
+#+REVEAL: split
+
+[[./img/threads-concurrent.png]]
+
+* Callbacks
+/Idée : demander régulièrement au système d'exploitation quelles sont
+  les sockets qui sont prêtes/
+- Dans notre cas: socket qui ont reçu des données du réseau
+- Appeler alors les fonctions en attente de ces données
+** Selecteurs
+
+[[./img/selector.png]]
+
+** Demo
+#+ATTR_REVEAL: :frag appear
+- un calcul lent peut complètement bloquer la boucle!
+* Coroutines
+- Threads : 'preemptive multitasking'
+  - compétition entre les threads
+  - OS décide des changements de contexte
+- Coroutines : 'cooperative multitasking'
+  - coopération entre les tâches
+  - programmeur décide des changements de contexte
+** Le principe
+- fonction capable de suspendre temporairement son exécution
+- implémentée en python ($<=3.5$) à l'aide de /générateurs/
+  - mot clé =yield= pour suspendre la coroutine 
+    - 'to give up, as to superior power or authority'
+    - ie, abandonner le contrôle à une instance supérieure
+- délégation à une sous-coroutine à l'aide de =yield from=
+  - PEP 380 (Python 3.4)
+#+REVEAL: split
+#+BEGIN_SRC python 
+def simple_coroutine():
+    print('Step 1')
+    yield
+    print('Step 2')
+    yield
+    return 'Done'
+
+def countdown(n):
+    print('Counting down from', n)
+    while n > 0:
+        yield n
+        n -= 1
+    return 'Done counting.'
+
+def countdown_twice(n):
+    yield from countdown(n)
+    yield from countdown(n)
+    return 'Done counting twice'
+#+END_SRC
+** Exécution coopérative d'une liste de tâches
+- une coroutine représente un tâhce, découpée en étapes par les 'yield'
+- une queue contient les tâches en cours
+- un ordonnanceur (/scheduler/) les fait progresser tour à tour
+#+BEGIN_SRC python
+  def run_until_complete(tasks):
+      while tasks:
+          # Fetch next task from the beginning of the queue
+          coro = tasks.popleft()
+          try:
+              # Advance task one step, until next 'yield'
+              next(coro)
+          except StopIteration as exc:
+              # The task finished, and its return value is 
+              # retrieved from the exception.
+              print('Scheduler: task returned', exc.value)
+              continue
+          else:
+              # Put the task back at the end of the queue
+              tasks.append(coro)
+#+END_SRC
+** Application à Fibserver
+La boucle événementielle (/event loop/) :
+  1. dépile les tâches, les fait avancer
+  2. les met en attente dans le sélecteur
+  3. les rempile quand les sockets sont prêtes
+[[./img/event-loop.png][Illustration...]]
+** Demo
+#+ATTR_REVEAL: :frag appear
+- toujours le risque du calcul bloquant...
+* Coroutines avec threads
+- Idée : déléguer uniquement les calculs qui bloquent la boucle à des
+  Threads
+** Futures
+Objet rendu disponible immédiatement, et destiné à recueillir un
+résultat futur
+#+REVEAL: split
+#+BEGIN_SRC python
+
+  from concurrent.futures import Future
+  from time import sleep
+
+  f = Future()
+
+  def execute_when_done(f):
+      print('Result available :', f.result())
+    
+  f.add_done_callback(execute_when_done)
+
+  sleep(3) # Computation goes on...
+
+  f.set_result(1)
+
+  # Result available: 1
+#+END_SRC
+#+REVEAL: split
+/Une implémentation simplifiée/
+#+BEGIN_SRC python
+
+class Future:
+
+    _result = None
+    _STATE = 'PENDING'
+
+    def __init__(self):
+        self._callbacks = []
+
+    def result(self):
+        if self._STATE != _FINISHED:
+            raise InvalidStateError('Result is not ready.')
+        else: return self._result
+
+    def add_done_callback(self, fn):
+        if self._STATE == 'FINISHED': fn(self)
+        else: self._callbacks.append(fn)
+
+    def set_result(self, result):
+        self._STATE = _FINISHED
+        self._result = result
+        # Run callbacks
+        for callback in self._callbacks:
+            callback(self)
+#+END_SRC
+** Application et démo
+#+ATTR_REVEAL: :frag appear
+- Calculs coûteux ne bloquent plus la boucle
+- Client rapide obtient un peu moins de débit
+  - Coût du passage par un autre thread 
+- Mais le client exigeant ne prive plus totalement le client rapide
+* Asyncio
+** Callbacks
+#+BEGIN_SRC 
+selector = DefaultSelector()
+selector.register(socket, EVENT_READ, callback)
+selector.unregister(socket)
+#+END_SRC
+Becomes...
+#+BEGIN_SRC python
+loop = asyncio.get_event_loop()
+loop.add_reader(s, callback, socket)
+loop.remove_reader(socket)
+#+END_SRC
+
+*** Demo
+#+ATTR_REVEAL: :frag appear
+- même comportement que la version "à la main"
+- danger du bloquage de l'event-loop
+  - ex: utilisation d'asyncio avec un ORM...
+** Coroutines
+
+#+BEGIN_SRC python
+yield EVENT_READ, s 
+conn, addr = s.accept()
+new_task = handle_client(conn) 
+tasks.append(new_task) 
+#+END_SRC
+
+Mutatis mutandis...
+
+#+BEGIN_SRC python 
+conn, addr = yield from loop.sock_accept(s)
+loop.create_task(handle_client(conn, addr))
+#+END_SRC
+
+#+REVEAL: split
+
+#+BEGIN_SRC python
+yield EVENT_READ, socket
+data = socket.read(256)
+#+END_SRC
+
+Mutatis mutandis...
+
+#+BEGIN_SRC python
+data = yield from loop.sock_recv(socket, 256)
+#+END_SRC
+
+#+REVEAL: split
+
+#+BEGIN_SRC python
+tasks.append(start_server())
+loop()
+#+END_SRC
+
+Mutatis mutandis...
+
+#+BEGIN_SRC
+loop.create_task(start_server())
+loop.run_forever()
+#+END_SRC
+
+** Coroutines et threads
+#+BEGIN_SRC python
+future = pool.submit(fib, n)
+yield 'future', future
+result = future.result()
+#+END_SRC
+
+Mutatis mutandis...
+
+#+BEGIN_SRC 
+result = yield from loop.run_in_executor(pool, fib, n)
+#+END_SRC
+*** Demo
+#+ATTR_REVEAL: :frag appear
+- asyncio est soumis au GIL comme tous le monde
+** Streams API
+#+BEGIN_SRC python
+  def handle_client(reader, writer):
+      while True:
+          data = yield from reader.read(256)
+          # etc...
+
+  server_coro = asyncio.start_server(handle_client, host='127.0.0.1', port=5000)
+  loop.create_task(server_coro)
+  loop.run_forever()
+#+END_SRC
+* Pour aller plus loin
+- A lire
+- [[http://www.aosabook.org/en/500L/a-web-crawler-with-asyncio-coroutines.html][A web crawler with asyncio coroutines]] (by Guido himself)
+- A regarder : les tutos incroyables de David Beazley
+  - [[https://www.youtube.com/watch?v=D1twn9kLmYg][Generators: the final frontier]]
+  - [[https://www.youtube.com/watch?v=Z_OAlIhXziw][A curious course on coroutines and concurrency]]
+  - [[https://www.youtube.com/watch?v=MCs5OvhV9S4][Python concurrency from the ground up]] (crazy live coding
+    @Pycon2015)
+

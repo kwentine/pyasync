@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Programmation asynchrone en Python</title>
+<meta name="author" content="(Quentin Agren)"/>
+<style type="text/css">
+.underline { text-decoration: underline; }
+</style>
+<link rel="stylesheet" href="http://cdn.jsdelivr.net/reveal.js/3.0.0/css/reveal.css"/>
+
+<link rel="stylesheet" href="http://cdn.jsdelivr.net/reveal.js/3.0.0/css/theme/moon.css" id="theme"/>
+
+
+<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+<script>
+    if( window.location.search.match( /print-pdf/gi ) ) {
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'http://cdn.jsdelivr.net/reveal.js/3.0.0/css/print/pdf.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    }
+</script>
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+<section id="sec-title-slide"><h1 class="title">Programmation asynchrone en Python</h1><h2 class="date">20/10/2017</h2>
+</section>
+<section id="table-of-contents">
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#/slide-orgbb3b576">Les nombres de Fibonacci</a></li>
+<li><a href="#/slide-org8d42120">Le serveur et ses clients</a></li>
+<li><a href="#/slide-org70a184d">Threads</a></li>
+<li><a href="#/slide-org7916da8">Callbacks</a></li>
+<li><a href="#/slide-org6e7e8a8">Coroutines</a></li>
+<li><a href="#/slide-org0a01e05">Coroutines avec threads</a></li>
+<li><a href="#/slide-org444b307">Asyncio</a></li>
+<li><a href="#/slide-orge1123b3">Pour aller plus loin</a></li>
+</ul>
+</div>
+</div>
+</section>
+<section>
+<section id="slide-orgbb3b576">
+<h2 id="orgbb3b576">Les nombres de Fibonacci</h2>
+<ul>
+<li>Algorithme récursif</li>
+
+</ul>
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">fib</span>(n):
+    <span style="color: #CC9393;">"""Compute n-th Fibonacci number"""</span>
+    <span style="color: #F0DFAF; font-weight: bold;">if</span> n &lt;= 1: <span style="color: #F0DFAF; font-weight: bold;">return</span> n
+    <span style="color: #F0DFAF; font-weight: bold;">else</span>: <span style="color: #F0DFAF; font-weight: bold;">return</span> fib(n-1) + fib(n-2)
+</pre>
+</div>
+<ul>
+<li>La suite croît très vite
+<ul>
+<li>\(Fib(30) = 832 040\)</li>
+<li>\(Fib(40) = 102 334 155\)</li>
+
+</ul></li>
+<li>Le calcul devient rapidement coûteux
+<ul>
+<li>permettra de simuler des requêtes gourmandes en CPU</li>
+
+</ul></li>
+
+</ul>
+</section>
+<p>
+<i>Pour BRO</i>
+</p>
+<ul>
+<li>Une version plus efficace en LISP</li>
+
+</ul>
+<div class="org-src-container">
+
+<pre  class="src src-elisp">(<span style="color: #F0DFAF; font-weight: bold;">defun</span> <span style="color: #93E0E3;">fib</span> (n)
+  <span style="color: #9FC59F;">"Compute n-th Fibonacci number iteratively"</span>
+    (<span style="color: #F0DFAF; font-weight: bold;">defun</span> <span style="color: #93E0E3;">fib-iter</span> (a b n)
+        (<span style="color: #F0DFAF; font-weight: bold;">if</span> (= n 0)
+            a
+          (fib-iter b (+ b a) (- n 1))))
+  (fib-iter 0 1 n))
+
+(fib 10) <span style="color: #5F7F5F;">;; </span><span style="color: #7F9F7F;">returns 55</span>
+</pre>
+</div>
+</section>
+</section>
+<section>
+<section id="slide-org8d42120">
+<h2 id="org8d42120">Le serveur et ses clients</h2>
+<div class="outline-text-2" id="text-org8d42120">
+</div>
+</section>
+</section>
+<section>
+<section id="slide-org0c3c54e">
+<h3 id="org0c3c54e">Serveur synchrone</h3>
+<ul>
+<li>Accepte les connexions TCP</li>
+<li>Attend du client connecté un entier \(n\)</li>
+<li>Calcule puis renvoie \(fib(n)\)</li>
+<li>Attend un entier etc&#x2026;</li>
+
+</ul>
+<p>
+La fermeture de la connexion est à l'initiative du client.
+</p>
+
+<p>
+Code : <code>fibservsync.py</code>
+</p>
+</section>
+</section>
+<section>
+<section id="slide-orga91135b">
+<h3 id="orga91135b">Clients : le frénétique et l'exigeant</h3>
+<p>
+Client rapide 
+</p>
+<ul>
+<li>requêtes fréquentes et peu coûteuses</li>
+<li>combien de requêtes/seconde servies ?</li>
+
+</ul>
+<p>
+Client lent
+</p>
+<ul>
+<li>requêtes coûteuses en calcul (35ème nombre de Fibonacci)</li>
+<li>combien de temps le serveur met-il à répondre ?</li>
+
+</ul>
+
+<p>
+<i>Idée : Utiliser différentes combinaisons de ces clients pour évaluer
+les performances du serveur</i>
+</p>
+
+<p>
+Code
+</p>
+<ul>
+<li><code>fibclientslow.py</code></li>
+<li><code>fibclientfast.py</code></li>
+
+</ul>
+
+</section>
+</section>
+<section>
+<section id="slide-orgca3e4e5">
+<h3 id="orgca3e4e5">Démo</h3>
+<ul class="fragment appear">
+<li>un seul client servi à la fois</li>
+<li>même si la connexion est inutilisée&#x2026;</li>
+
+</ul>
+</section>
+<section >
+
+<div class="figure">
+<p><img src="./img/sync.png" alt="sync.png" />
+</p>
+</div>
+</section>
+</section>
+<section>
+<section id="slide-org70a184d">
+<h2 id="org70a184d">Threads</h2>
+<p>
+<i>"Fils d'exécution" indépendants, partageant les ressources du
+processus auxquels ils appartiennent.</i>
+</p>
+
+
+<ul>
+<li>Si un processus s'exécute sur un CPU avec plusieurs coeurs, l'OS est
+capable d'en exécuter plusieurs <b>en même temps</b></li>
+
+<li>Autrement, l'OS décide du partage du temps d'exécution entre les threads
+(<i>context switching</i>)</li>
+
+<li>Exemple: les onglets d'un navigateur s'exécutent dans des threads séparés</li>
+
+</ul>
+
+</section>
+<section >
+
+
+<div class="figure">
+<p><img src="img/threads-parallel.png" alt="threads-parallel.png" />
+</p>
+</div>
+
+</section>
+<section >
+
+<p>
+<i>Idée : le serveur peut créer un thread pour s'occuper de chaque
+nouveau client qui se connecte.</i>
+</p>
+
+<ul>
+<li>Permet d'accepter de nouvelles connexions dans le thread principal,
+pendant que les autres clients sont servis par des threads séparés</li>
+
+</ul>
+
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">run_server</span>(host=<span style="color: #CC9393;">'127.0.0.1'</span>, port=5000):
+    <span style="color: #DFAF8F;">s</span> = socket.socket()
+    <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">...</span>
+    s.listen(5)
+    <span style="color: #F0DFAF; font-weight: bold;">while</span> <span style="color: #BFEBBF;">True</span>:
+        <span style="color: #DFAF8F;">conn</span>, <span style="color: #DFAF8F;">addr</span> = s.accept() <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">Block until a connexion comes in</span>
+        <span style="color: #F0DFAF; font-weight: bold;">print</span>(<span style="color: #CC9393;">'Connection from {}.'</span>.<span style="color: #DCDCCC; font-weight: bold;">format</span>(addr))
+        <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">Handle client in a separate thread, </span>
+        <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">and go back to accepting incoming connexions</span>
+        Thread(target=handle_client, args=(conn,)).start() 
+</pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org1428cbf">
+<h3 id="org1428cbf">Demo</h3>
+<ul class="fragment appear">
+<li>Client frénétique : moins de requêtes par seconde (req/s)
+<ul>
+<li>coût de la création des threads</li>
+
+</ul></li>
+<li>Deux clients frénétiques : req/s divisé par deux</li>
+<li>Frénétique + exigeant
+<ul>
+<li>req/s chute drastiquement pour le frénétique</li>
+<li>client exigeant inaffecté</li>
+
+</ul></li>
+
+</ul>
+
+</section>
+</section>
+<section>
+<section id="slide-org0f5ecff">
+<h3 id="org0f5ecff">Limites des threads</h3>
+<p>
+<i>De manière générale</i>
+</p>
+<ul>
+<li>nombre de threads limité par les ressources système
+<ul>
+<li>grand nombre de connexions entrantes : risque de saturation</li>
+
+</ul></li>
+<li>coût de la création des threads
+<ul>
+<li>solution possible : utilisation de thread pools</li>
+
+</ul></li>
+
+</ul>
+
+</section>
+<section >
+<p>
+<i>Limitations propres à Python</i>
+</p>
+<ul>
+<li><i>Global interpreter lock</i> (aka 'the infamous GIL')</li>
+<li>processus python : un seul thread s'exécute à la fois</li>
+<li>illusion de parallélisme obtenue par concurrence
+<ul>
+<li><i>Context switching</i></li>
+
+</ul></li>
+
+</ul>
+
+</section>
+<section >
+
+
+<div class="figure">
+<p><img src="./img/threads-concurrent.png" alt="threads-concurrent.png" />
+</p>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org7916da8">
+<h2 id="org7916da8">Callbacks</h2>
+<p>
+<i>Idée : demander régulièrement au système d'exploitation quelles sont
+  les sockets qui sont prêtes</i>
+</p>
+<ul>
+<li>Dans notre cas: socket qui ont reçu des données du réseau</li>
+<li>Appeler alors les fonctions en attente de ces données</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-org99169aa">
+<h3 id="org99169aa">Selecteurs</h3>
+
+<div class="figure">
+<p><img src="./img/selector.png" alt="selector.png" />
+</p>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org5676cef">
+<h3 id="org5676cef">Demo</h3>
+<ul class="fragment appear">
+<li>un calcul lent peut complètement bloquer la boucle!</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-org6e7e8a8">
+<h2 id="org6e7e8a8">Coroutines</h2>
+<ul>
+<li>Threads : 'preemptive multitasking'
+<ul>
+<li>compétition entre les threads</li>
+<li>OS décide des changements de contexte</li>
+
+</ul></li>
+<li>Coroutines : 'cooperative multitasking'
+<ul>
+<li>coopération entre les tâches</li>
+<li>programmeur décide des changements de contexte</li>
+
+</ul></li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-orge70d8cf">
+<h3 id="orge70d8cf">Le principe</h3>
+<ul>
+<li>fonction capable de suspendre temporairement son exécution</li>
+<li>implémentée en python (\(<=3.5\)) à l'aide de <i>générateurs</i>
+<ul>
+<li>mot clé <code>yield</code> pour suspendre la coroutine 
+<ul>
+<li>'to give up, as to superior power or authority'</li>
+<li>ie, abandonner le contrôle à une instance supérieure</li>
+
+</ul></li>
+
+</ul></li>
+<li>délégation à une sous-coroutine à l'aide de <code>yield from</code>
+<ul>
+<li>PEP 380 (Python 3.4)</li>
+
+</ul></li>
+
+</ul>
+</section>
+<section >
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">simple_coroutine</span>():
+    <span style="color: #F0DFAF; font-weight: bold;">print</span>(<span style="color: #CC9393;">'Step 1'</span>)
+    <span style="color: #F0DFAF; font-weight: bold;">yield</span>
+    <span style="color: #F0DFAF; font-weight: bold;">print</span>(<span style="color: #CC9393;">'Step 2'</span>)
+    <span style="color: #F0DFAF; font-weight: bold;">yield</span>
+    <span style="color: #F0DFAF; font-weight: bold;">return</span> <span style="color: #CC9393;">'Done'</span>
+
+<span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">countdown</span>(n):
+    <span style="color: #F0DFAF; font-weight: bold;">print</span>(<span style="color: #CC9393;">'Counting down from'</span>, n)
+    <span style="color: #F0DFAF; font-weight: bold;">while</span> n &gt; 0:
+        <span style="color: #F0DFAF; font-weight: bold;">yield</span> n
+        <span style="color: #DFAF8F;">n</span> -= 1
+    <span style="color: #F0DFAF; font-weight: bold;">return</span> <span style="color: #CC9393;">'Done counting.'</span>
+
+<span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">countdown_twice</span>(n):
+    <span style="color: #F0DFAF; font-weight: bold;">yield</span> <span style="color: #F0DFAF; font-weight: bold;">from</span> countdown(n)
+    <span style="color: #F0DFAF; font-weight: bold;">yield</span> <span style="color: #F0DFAF; font-weight: bold;">from</span> countdown(n)
+    <span style="color: #F0DFAF; font-weight: bold;">return</span> <span style="color: #CC9393;">'Done counting twice'</span>
+</pre>
+</div>
+</section>
+</section>
+<section>
+<section id="slide-org85208bd">
+<h3 id="org85208bd">Exécution coopérative d'une liste de tâches</h3>
+<ul>
+<li>une coroutine représente un tâhce, découpée en étapes par les 'yield'</li>
+<li>une queue contient les tâches en cours</li>
+<li>un ordonnanceur (<i>scheduler</i>) les fait progresser tour à tour</li>
+
+</ul>
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">run_until_complete</span>(tasks):
+    <span style="color: #F0DFAF; font-weight: bold;">while</span> tasks:
+        <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">Fetch next task from the beginning of the queue</span>
+        <span style="color: #DFAF8F;">coro</span> = tasks.popleft()
+        <span style="color: #F0DFAF; font-weight: bold;">try</span>:
+            <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">Advance task one step, until next 'yield'</span>
+            <span style="color: #DCDCCC; font-weight: bold;">next</span>(coro)
+        <span style="color: #F0DFAF; font-weight: bold;">except</span> <span style="color: #7CB8BB;">StopIteration</span> <span style="color: #F0DFAF; font-weight: bold;">as</span> exc:
+            <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">The task finished, and its return value is </span>
+            <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">retrieved from the exception.</span>
+            <span style="color: #F0DFAF; font-weight: bold;">print</span>(<span style="color: #CC9393;">'Scheduler: task returned'</span>, exc.value)
+            <span style="color: #F0DFAF; font-weight: bold;">continue</span>
+        <span style="color: #F0DFAF; font-weight: bold;">else</span>:
+            <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">Put the task back at the end of the queue</span>
+            tasks.append(coro)
+</pre>
+</div>
+</section>
+</section>
+<section>
+<section id="slide-org9ac6d0e">
+<h3 id="org9ac6d0e">Application à Fibserver</h3>
+<p>
+La boucle événementielle (<i>event loop</i>) :
+</p>
+<ol>
+<li>dépile les tâches, les fait avancer</li>
+<li>les met en attente dans le sélecteur</li>
+<li>les rempile quand les sockets sont prêtes</li>
+
+</ol>
+<p>
+<a href="./img/event-loop.png">Illustration&#x2026;</a>
+</p>
+</section>
+</section>
+<section>
+<section id="slide-org3474e57">
+<h3 id="org3474e57">Demo</h3>
+<ul class="fragment appear">
+<li>toujours le risque du calcul bloquant&#x2026;</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-org0a01e05">
+<h2 id="org0a01e05">Coroutines avec threads</h2>
+<ul>
+<li>Idée : déléguer uniquement les calculs qui bloquent la boucle à des
+Threads</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-org8b91894">
+<h3 id="org8b91894">Futures</h3>
+<p>
+Objet rendu disponible immédiatement, et destiné à recueillir un
+résultat futur
+</p>
+</section>
+<section >
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #F0DFAF; font-weight: bold;">from</span> concurrent.futures <span style="color: #F0DFAF; font-weight: bold;">import</span> Future
+<span style="color: #F0DFAF; font-weight: bold;">from</span> time <span style="color: #F0DFAF; font-weight: bold;">import</span> sleep
+
+<span style="color: #DFAF8F;">f</span> = Future()
+
+<span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">execute_when_done</span>(f):
+    <span style="color: #F0DFAF; font-weight: bold;">print</span>(<span style="color: #CC9393;">'Result available :'</span>, f.result())
+
+f.add_done_callback(execute_when_done)
+
+sleep(3) <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">Computation goes on...</span>
+
+f.set_result(1)
+
+<span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">Result available: 1</span>
+</pre>
+</div>
+</section>
+<section >
+<p>
+<i>Une implémentation simplifiée</i>
+</p>
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #F0DFAF; font-weight: bold;">class</span> <span style="color: #7CB8BB;">Future</span>:
+
+    <span style="color: #DFAF8F;">_result</span> = <span style="color: #BFEBBF;">None</span>
+    <span style="color: #DFAF8F;">_STATE</span> = <span style="color: #CC9393;">'PENDING'</span>
+
+    <span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">__init__</span>(<span style="color: #F0DFAF; font-weight: bold;">self</span>):
+        <span style="color: #F0DFAF; font-weight: bold;">self</span>._callbacks = []
+
+    <span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">result</span>(<span style="color: #F0DFAF; font-weight: bold;">self</span>):
+        <span style="color: #F0DFAF; font-weight: bold;">if</span> <span style="color: #F0DFAF; font-weight: bold;">self</span>._STATE != _FINISHED:
+            <span style="color: #F0DFAF; font-weight: bold;">raise</span> InvalidStateError(<span style="color: #CC9393;">'Result is not ready.'</span>)
+        <span style="color: #F0DFAF; font-weight: bold;">else</span>: <span style="color: #F0DFAF; font-weight: bold;">return</span> <span style="color: #F0DFAF; font-weight: bold;">self</span>._result
+
+    <span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">add_done_callback</span>(<span style="color: #F0DFAF; font-weight: bold;">self</span>, fn):
+        <span style="color: #F0DFAF; font-weight: bold;">if</span> <span style="color: #F0DFAF; font-weight: bold;">self</span>._STATE == <span style="color: #CC9393;">'FINISHED'</span>: fn(<span style="color: #F0DFAF; font-weight: bold;">self</span>)
+        <span style="color: #F0DFAF; font-weight: bold;">else</span>: <span style="color: #F0DFAF; font-weight: bold;">self</span>._callbacks.append(fn)
+
+    <span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">set_result</span>(<span style="color: #F0DFAF; font-weight: bold;">self</span>, result):
+        <span style="color: #F0DFAF; font-weight: bold;">self</span>._STATE = _FINISHED
+        <span style="color: #F0DFAF; font-weight: bold;">self</span>._result = result
+        <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">Run callbacks</span>
+        <span style="color: #F0DFAF; font-weight: bold;">for</span> callback <span style="color: #F0DFAF; font-weight: bold;">in</span> <span style="color: #F0DFAF; font-weight: bold;">self</span>._callbacks:
+            callback(<span style="color: #F0DFAF; font-weight: bold;">self</span>)
+</pre>
+</div>
+</section>
+</section>
+<section>
+<section id="slide-orgb816090">
+<h3 id="orgb816090">Application et démo</h3>
+<ul class="fragment appear">
+<li>Calculs coûteux ne bloquent plus la boucle</li>
+<li>Client rapide obtient un peu moins de débit
+<ul>
+<li>Coût du passage par un autre thread</li>
+
+</ul></li>
+<li>Mais le client exigeant ne prive plus totalement le client rapide</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-org444b307">
+<h2 id="org444b307">Asyncio</h2>
+<div class="outline-text-2" id="text-org444b307">
+</div>
+</section>
+</section>
+<section>
+<section id="slide-org40ac7c5">
+<h3 id="org40ac7c5">Callbacks</h3>
+<pre  class="example">
+selector = DefaultSelector()
+selector.register(socket, EVENT_READ, callback)
+selector.unregister(socket)
+</pre>
+<p>
+Becomes&#x2026;
+</p>
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #DFAF8F;">loop</span> = asyncio.get_event_loop()
+loop.add_reader(s, callback, socket)
+loop.remove_reader(socket)
+</pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org2b40761">
+<h4 id="org2b40761">Demo</h4>
+<ul class="fragment appear">
+<li>même comportement que la version "à la main"</li>
+<li>danger du bloquage de l'event-loop
+<ul>
+<li>ex: utilisation d'asyncio avec un ORM&#x2026;</li>
+
+</ul></li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-orgab6e48c">
+<h3 id="orgab6e48c">Coroutines</h3>
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #F0DFAF; font-weight: bold;">yield</span> EVENT_READ, s 
+<span style="color: #DFAF8F;">conn</span>, <span style="color: #DFAF8F;">addr</span> = s.accept()
+<span style="color: #DFAF8F;">new_task</span> = handle_client(conn) 
+tasks.append(new_task) 
+</pre>
+</div>
+
+<p>
+Mutatis mutandis&#x2026;
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #DFAF8F;">conn</span>, <span style="color: #DFAF8F;">addr</span> = <span style="color: #F0DFAF; font-weight: bold;">yield</span> <span style="color: #F0DFAF; font-weight: bold;">from</span> loop.sock_accept(s)
+loop.create_task(handle_client(conn, addr))
+</pre>
+</div>
+
+</section>
+<section >
+
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #F0DFAF; font-weight: bold;">yield</span> EVENT_READ, socket
+<span style="color: #DFAF8F;">data</span> = socket.read(256)
+</pre>
+</div>
+
+<p>
+Mutatis mutandis&#x2026;
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #DFAF8F;">data</span> = <span style="color: #F0DFAF; font-weight: bold;">yield</span> <span style="color: #F0DFAF; font-weight: bold;">from</span> loop.sock_recv(socket, 256)
+</pre>
+</div>
+
+</section>
+<section >
+
+<div class="org-src-container">
+
+<pre  class="src src-python">tasks.append(start_server())
+loop()
+</pre>
+</div>
+
+<p>
+Mutatis mutandis&#x2026;
+</p>
+
+<pre  class="example">
+loop.create_task(start_server())
+loop.run_forever()
+</pre>
+
+</section>
+</section>
+<section>
+<section id="slide-orgf0f9e9d">
+<h3 id="orgf0f9e9d">Coroutines et threads</h3>
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #DFAF8F;">future</span> = pool.submit(fib, n)
+<span style="color: #F0DFAF; font-weight: bold;">yield</span> <span style="color: #CC9393;">'future'</span>, future
+<span style="color: #DFAF8F;">result</span> = future.result()
+</pre>
+</div>
+
+<p>
+Mutatis mutandis&#x2026;
+</p>
+
+<pre  class="example">
+result = yield from loop.run_in_executor(pool, fib, n)
+</pre>
+</section>
+</section>
+<section>
+<section id="slide-org68ffb34">
+<h4 id="org68ffb34">Demo</h4>
+<ul class="fragment appear">
+<li>asyncio est soumis au GIL comme tous le monde</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-org6eea97c">
+<h3 id="org6eea97c">Streams API</h3>
+<div class="org-src-container">
+
+<pre  class="src src-python"><span style="color: #F0DFAF; font-weight: bold;">def</span> <span style="color: #93E0E3;">handle_client</span>(reader, writer):
+    <span style="color: #F0DFAF; font-weight: bold;">while</span> <span style="color: #BFEBBF;">True</span>:
+        <span style="color: #DFAF8F;">data</span> = <span style="color: #F0DFAF; font-weight: bold;">yield</span> <span style="color: #F0DFAF; font-weight: bold;">from</span> reader.read(256)
+        <span style="color: #5F7F5F;"># </span><span style="color: #7F9F7F;">etc...</span>
+
+<span style="color: #DFAF8F;">server_coro</span> = asyncio.start_server(handle_client, host=<span style="color: #CC9393;">'127.0.0.1'</span>, port=5000)
+loop.create_task(server_coro)
+loop.run_forever()
+</pre>
+</div>
+</section>
+</section>
+<section>
+<section id="slide-orge1123b3">
+<h2 id="orge1123b3">Pour aller plus loin</h2>
+<ul>
+<li>A lire</li>
+<li><a href="http://www.aosabook.org/en/500L/a-web-crawler-with-asyncio-coroutines.html">A web crawler with asyncio coroutines</a> (by Guido himself)</li>
+<li>A regarder : les tutos incroyables de David Beazley
+<ul>
+<li><a href="https://www.youtube.com/watch?v=D1twn9kLmYg">Generators: the final frontier</a></li>
+<li><a href="https://www.youtube.com/watch?v=Z_OAlIhXziw">A curious course on coroutines and concurrency</a></li>
+<li><a href="https://www.youtube.com/watch?v=MCs5OvhV9S4">Python concurrency from the ground up</a> (crazy live coding
+@Pycon2015)</li>
+
+</ul></li>
+
+</ul>
+</section>
+</section>
+</div>
+</div>
+<script src="http://cdn.jsdelivr.net/reveal.js/3.0.0/lib/js/head.min.js"></script>
+<script src="http://cdn.jsdelivr.net/reveal.js/3.0.0/js/reveal.js"></script>
+
+<script>
+// Full list of configuration options available here:
+// https://github.com/hakimel/reveal.js#configuration
+Reveal.initialize({
+
+controls: true,
+progress: true,
+history: false,
+center: true,
+slideNumber: 'c',
+rollingLinks: true,
+keyboard: true,
+overview: true,
+width: 1200,
+height: 800,
+margin: 0.10,
+
+theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+transition: Reveal.getQueryHash().transition || 'cube', // default/cube/page/concave/zoom/linear/fade/none
+transitionSpeed: 'default',
+multiplex: {
+    secret: '', // null if client
+    id: '', // id, obtained from socket.io server
+    url: '' // Location of socket.io server
+},
+
+// Optional libraries used to extend on reveal.js
+dependencies: [
+ { src: 'http://cdn.jsdelivr.net/reveal.js/3.0.0/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+ { src: 'http://cdn.jsdelivr.net/reveal.js/3.0.0/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+ { src: 'http://cdn.jsdelivr.net/reveal.js/3.0.0/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+ { src: 'http://cdn.jsdelivr.net/reveal.js/3.0.0/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+ { src: 'http://cdn.jsdelivr.net/reveal.js/3.0.0/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }]
+});
+</script>
+</body>
+</html>

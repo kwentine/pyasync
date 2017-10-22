@@ -1,5 +1,4 @@
 * Atelier asyncio
-
 ** In
 Idea behin IO loops:
 - each IO operation involves a *file handler*
@@ -124,6 +123,8 @@ nécessitent un long temps de calcul.
     - built on top of IOStream
 
 ** Analyse comparative des performances
+- Client lent: Fib(30)
+- Client rapide: Fib(10)
 *** Synchrone
 | Server version | 1 fast | 2  fast | 1 slow | 2 slow | fast + slow  | fast + slow  |
 |----------------+--------+---------+--------+--------+--------------+--------------|
@@ -140,20 +141,27 @@ nécessitent un long temps de calcul.
 
 *** Callbacks
 *** Coroutines
+| Server version        | 1 fast | 2  fast | 1 slow | 2 slow |  fast + slow |  fast + slow |
+|-----------------------+--------+---------+--------+--------+--------------+--------------|
+|                       |  req/s |   req/s |  s/req |  s/req | (fast) req/s | slow (s/rec) |
+|-----------------------+--------+---------+--------+--------+--------------+--------------|
+| Synchrone             |  38000 |       X |      1 |      X |            X |            X |
+| Threads               |  34000 |   17000 |      1 |    2.1 |          100 |            1 |
+| Callbacks             |  33000 |   20000 |    1.1 |    2.1 |            1 |          1.1 |
+| Coroutines            |  32000 |   16000 |    1.1 |    2.2 |            1 |          1.1 |
+
 *** Coroutines et threads
+| Server version        | 1 fast | 2  fast | 1 slow | 2 slow |  fast + slow |  fast + slow |
+|-----------------------+--------+---------+--------+--------+--------------+--------------|
+|                       |  req/s |   req/s |  s/req |  s/req | (fast) req/s | slow (s/rec) |
+|-----------------------+--------+---------+--------+--------+--------------+--------------|
+| Synchrone             |  38000 |       X |      1 |      X |            X |            X |
+| Threads               |  34000 |   17000 |      1 |    2.1 |          100 |            1 |
+| Callbacks             |  33000 |   20000 |    1.1 |    2.1 |            1 |          1.1 |
+| Coroutines            |  32000 |   16000 |    1.1 |    2.2 |            1 |          1.1 |
+| Coroutines et threads |   8000 |    4000 |    1.1 |    2.2 |           30 |          1.1 |
+
 *** Asyncio
-*** Recap
-Lorsque cb + thread, on voit le taux de requêtes baisser lorsque le
-nombre de clients longs est égal au nombre de threads dans la pool.
-
-- fibservcoro3thrd.py
-Task is awaken in executor thread, where it registers for I/O
-read. That unblocks the main event loop. This means that there could
-be racing conditions on the selector..
-
-- Slow client asks for Fib(30)
-- Fast client asks for Fib(10)
-
 | Server version        | 1 fast | 2  fast | 1 slow | 2 slow |  fast + slow |  fast + slow |
 |-----------------------+--------+---------+--------+--------+--------------+--------------|
 |                       |  req/s |   req/s |  s/req |  s/req | (fast) req/s | slow (s/rec) |
@@ -166,5 +174,9 @@ be racing conditions on the selector..
 |-----------------------+--------+---------+--------+--------+--------------+--------------|
 | Asyncio               |        |         |        |        |              |              |
 |-----------------------+--------+---------+--------+--------+--------------+--------------|
-| Tornado               |        |         |        |        |              |              |
+| Callbacks             |  30000 |   18000 |      1 |      2 |            1 |            1 |
+| Coroutines            |  20000 |    9000 |      1 |      2 |            1 |            1 |
+| Coroutines et threads |   5000 |    3000 |      1 |      2 |           50 |            1 |
+| Streams               |   4500 |    2600 |      1 |      2 |           40 |            1 |
+
 
