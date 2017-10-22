@@ -140,9 +140,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.58820053"
-     inkscape:cx="484.59392"
-     inkscape:cy="152.76609"
+     inkscape:zoom="0.73679682"
+     inkscape:cx="489.42084"
+     inkscape:cy="-13.744375"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -151,9 +151,9 @@
      inkscape:snap-path-clip="false"
      inkscape:snap-global="true"
      inkscape:snap-object-midpoints="true"
-     inkscape:window-width="1861"
+     inkscape:window-width="1920"
      inkscape:window-height="1056"
-     inkscape:window-x="1979"
+     inkscape:window-x="1920"
      inkscape:window-y="24"
      inkscape:window-maximized="1"
      showborder="false">
@@ -172,7 +172,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -182,7 +182,7 @@
      id="layer1"
      transform="translate(0,-308.26772)">
     <rect
-       style="fill:#add8e6;fill-opacity:1;stroke:#000000;stroke-width:1.60000002;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       style="fill:#dcdcdc;fill-opacity:1;stroke:#000000;stroke-width:1.60000002;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect4597"
        width="1152"
        height="64"
@@ -1021,5 +1021,15 @@
          x="278.38712"
          y="201.66109"
          style="font-size:35px">Etapes de la boucle événementielle</tspan></text>
-  </g>
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot9379"
+       style="fill:black;stroke:none;stroke-opacity:1;stroke-width:1px;stroke-linejoin:miter;stroke-linecap:butt;fill-opacity:1;font-family:sans-serif;font-style:normal;font-weight:normal;font-size:12.5px;line-height:125%;letter-spacing:0px;word-spacing:0px"><flowRegion
+         id="flowRegion9381"><rect
+           id="rect9383"
+           width="0"
+           height="16"
+           x="176"
+           y="-119.90552" /></flowRegion><flowPara
+         id="flowPara9385"></flowPara></flowRoot>  </g>
 </svg>
