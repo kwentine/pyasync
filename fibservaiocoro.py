@@ -1,29 +1,23 @@
-""" Fibonacci server - asyncio - coroutines - low-level socket operations
-"""
 import socket
 import asyncio
-from asyncio import coroutine
+from fib import fib 
+
 loop = asyncio.get_event_loop()
 
-def fib(n):
-    """Compute nth Fibonacci number"""
-    if n <= 1: return n
-    else: return fib(n-1) + fib(n-2)
-
-def handle_client(conn, addr):
-    print('Connection from {}:{}'.format(*addr))
-    try:
-        while True:
+def handle_client(conn):
+    while True:
+        try:
+            # delegate to loop.sock_recv() coroutine
+            # `yield from` expression evaluates to the return value of the coroutine
             data = yield from loop.sock_recv(conn, 256)
-            if not data:
-                break
             n = int(data.decode('ascii'))
-            res = str(fib(n)).encode('ascii') + b'\n'
-            conn.send(res)
-    except Exception as e:
-        print('{}:{}'.format(*addr), e, '(closing connection)')
-    finally:
-        conn.close()
+            result = fib(n) 
+            response = str(result).encode('ascii') + b'\n'
+            conn.send(response) 
+        except:
+            break
+    print('Client disconnected')
+    conn.close()
     
 def start_server(host='127.0.0.1', port=5000):
     s = socket.socket()
@@ -34,7 +28,7 @@ def start_server(host='127.0.0.1', port=5000):
     print("Fibonacci server running on port %d ..." % port)
     while True:
         conn, addr = yield from loop.sock_accept(s)
-        loop.create_task(handle_client(conn, addr))
+        loop.create_task(handle_client(conn))
     
 if __name__ == "__main__":
     loop.create_task(start_server())

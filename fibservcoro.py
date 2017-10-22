@@ -33,8 +33,8 @@ def run_tasks():
 def handle_client(conn):
     
     while True:
-        yield EVENT_READ, conn # Suspend before reading
         try:
+            yield EVENT_READ, conn # Suspend before reading
             data = conn.recv(256) 
             n = int(data.decode('ascii'))
             result = fib(n) 
@@ -46,7 +46,7 @@ def handle_client(conn):
     conn.close()
 
 
-def run_server(host='127.0.0.1', port=5000):
+def start_server(host='127.0.0.1', port=5000):
     s = socket.socket()
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
     s.bind((host, port))
@@ -59,5 +59,5 @@ def run_server(host='127.0.0.1', port=5000):
         tasks.append(new_task) 
 
 if __name__ == "__main__":
-    tasks.append(run_server())
+    tasks.append(start_server())
     loop() # Start the event loop

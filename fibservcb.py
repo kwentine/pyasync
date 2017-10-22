@@ -1,7 +1,18 @@
 import socket
 from fib import fib
 from selectors import DefaultSelector, EVENT_READ
+
 selector = DefaultSelector()
+
+def loop():
+    while True:
+        # Blocks until a registered socket is ready for I/O
+        events = selector.select()
+        for key, mask in events:
+            # key.fileobj : registered socket
+            # key.data    : associated callback
+            callback = key.data
+            callback(key.fileobj) 
 
 def start_server(host='127.0.0.1', port=5000):
     s = socket.socket()
@@ -27,16 +38,6 @@ def handle_client(conn):
     except:
         selector.unregister(conn)
         conn.close()
-
-def loop():
-    while True:
-        # Blocks until a registered socket is ready for I/O
-        events = selector.select()
-        for key, mask in events:
-            # key.fileobj : registered socket
-            # key.data    : associated callback
-            callback = key.data
-            callback(key.fileobj) 
     
 if __name__ == "__main__":
     start_server()
