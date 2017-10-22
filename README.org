@@ -1,5 +1,5 @@
-Some experiments with asynchronous programming in Python, inspired by
-the following great resources:
+Some experiments with asynchronous programming in Python, largely
+inspired by the following great resources:
 
 - A book chapter by Jesse Jiryu Davis and Guido van Rossum introducing
   the ideas underlying the `asyncio` library
@@ -9,48 +9,58 @@ the following great resources:
   - [[https://www.youtube.com/watch?v=Z_OAlIhXziw][A curious course on coroutines and concurrency]]
   - [[https://www.youtube.com/watch?v=MCs5OvhV9S4][Python concurrency from the ground up]]
 
+The general idea is to take some very simple network application
+senarios, implement synchronous versions, and gradually make changes
+to turn them asynchronous exploring various techniques and tradeoffs
+along the way (threads, callback style, coroutines...) Finally,
+provide corresponding variants using asyncio's event loop and APIs.
+ 
 * Fibonacci servers
 
-The `fibservers` directory contains incrementals version of a simple
-TCP server computing Fibonacci numbers, gradully going from
-synchronous to async.
+The [[file:fibservers/][fibservers]] directory contains incrementals version of a simple TCP
+server computing Fibonacci numbers, gradully going from synchronous to
+async. Each version of the server comes with an equivalent
+implementation using asyncio's event loop and APIs.
 
-- `fibservsync.py`
+- [[file:fibservers/fibservsync.py][fibservsync.py]]
   Synchronous version. Handles one connexion at a time.
 
-- `fibservthrd.py`
+- [[file:fibservers/fibservthrd.py][fibservthrd.py]]
 
   Introduce concurrency by handling each incoming connexion in a
   separate thread.
 
-- `fibservcb.py` 
+- [[file:fibservers/fibservcb.py][fibservcb.py]] 
 
   First single-threaded async version, using callbacks and I/O polling
-  with the standard library's `selectors` module.
+  with the standard library's [[https://docs.python.org/3/library/selectors.html][selectors]] module.
 
-- `fibservcoro.py`
+- [[file:fibservers/fibservcoro.py][fibservcoro.py]]
 
   Use coroutines to implement tasks, driven by a simple event loop.
 
-- `fibservcorothrd.py`
+- [[file:fibservers/fibservcorothrd.py][fibservcorothrd.py]]
 
   Asynchronous I/O handled by an event loop in the main thread, and
   computation of Fibonacci numbers delegated to a `ThreadPoolExecutor`
 
-- `fibseraiocb.py`
+** Asyncio variants
+
+- [[file:fibservers/fibservaiocb.py][fibseraiocb.py]]
 
   Modify the callback-style server using asyncio's API to [[https://docs.python.org/3/library/asyncio-eventloop.html#watch-file-descriptors][watch file
   descriptors.]]
 
-- `fibservaiocorothrd.py`
+- [[file:fibservers/fibservaiocorothrd.py][fibservaiocorothrd.py]]
 
   Modify the coroutine-based server using asyncio's event loop and
   [[https://docs.python.org/3/library/asyncio-eventloop.html#low-level-socket-operations][low-level socket operations]].
 
-- `fibservaoistreams.py`
+- [[file:fibservers/fibservaiostreams.py][fibservaoistreams.py]]
 
   Final and shortest version, using `asyncio`'s TCP server and
   [[https://docs.python.org/3/library/asyncio-stream.html][streams]].
+
 
 ** Performance assessment
 
@@ -95,6 +105,7 @@ Here are the results of the tests performed on my machine:
 The notes of a short presentation I gave on the topic, and a reveal.js
 export are found in the `presentation directory`
 
+
 * Simplified event loop
 
 While reading asyncio code, I started out to implement a simplified
@@ -102,6 +113,7 @@ version of the event loop, tasks and futures, while mimicking the
 API. It tries to capture the essential logic, while overlooking error
 handling and many other subtleties. This work in progress is in the
 `eventloop` directory.
+
 
 * Web clients
 
