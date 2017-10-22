@@ -23,6 +23,7 @@ async. Each version of the server comes with an equivalent
 implementation using asyncio's event loop and APIs.
 
 - [[file:fibservers/fibservsync.py][fibservsync.py]]
+
   Synchronous version. Handles one connexion at a time.
 
 - [[file:fibservers/fibservthrd.py][fibservthrd.py]]
@@ -112,11 +113,10 @@ While reading asyncio code, I started out to implement a simplified
 version of the event loop, tasks and futures, while mimicking the
 API. It tries to capture the essential logic, while overlooking error
 handling and many other subtleties. This work in progress is in the
-`eventloop` directory.
-
+[[file:eventloop/][eventloop]] directory.
 
 * Web clients
 
-The `webclients` folder follows the same incremental approach,
+The [[file:webclients/][webclients]] directory follows the same incremental approach,
 focusing on the simple task of concurrently fetching a list of
 URLs. Work in progress, also integrating some Tornado examples.
