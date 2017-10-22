@@ -2,7 +2,7 @@ Some experiments with asynchronous programming in Python, largely
 inspired by the following great resources:
 
 - A book chapter by Jesse Jiryu Davis and Guido van Rossum introducing
-  the ideas underlying the `asyncio` library
+  the ideas underlying the [[https://docs.python.org/3/library/asyncio.html][asyncio]] library
   - [[http://www.aosabook.org/en/500L/a-web-crawler-with-asyncio-coroutines.html][A web crawler with asyncio coroutines]] 
 - David Beazley's amazing tutorials 
   - [[https://www.youtube.com/watch?v=D1twn9kLmYg][Generators: the final frontier]]
