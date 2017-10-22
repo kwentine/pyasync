@@ -67,14 +67,26 @@ play around and test performance:
   Send comparatively CPU-demanding requests (computing Fib(33)) and
   monitor the time-per-request.
 
-The benchmarks performed on my machine, giving a basic illustration of
-some tradeoffs to keep in mind when doing asynchronous programming in
-Python, are summed-up in `perfs.org`
+Using various combinations of these allows to get an idean of some
+tradeoffs involved when doing asynchronous programming in Python. 
 
 
-
-
-
+| Server version         | 1 fast | 2  fast | 1 slow | 2 slow |  fast + slow |  fast + slow |
+|------------------------+--------+---------+--------+--------+--------------+--------------|
+|                        |  req/s |   req/s |  s/req |  s/req | (fast) req/s | slow (s/rec) |
+|------------------------+--------+---------+--------+--------+--------------+--------------|
+| Synchronous            |  38000 |       X |      1 |      X |            X |            X |
+| Threads                |  34000 |   17000 |      1 |    2.1 |          100 |            1 |
+| Callbacks              |  33000 |   20000 |    1.1 |    2.1 |            1 |          1.1 |
+| Coroutines             |  32000 |   16000 |    1.1 |    2.2 |            1 |          1.1 |
+| Coroutines and threads |   8000 |    4000 |    1.1 |    2.2 |           30 |          1.1 |
+|------------------------+--------+---------+--------+--------+--------------+--------------|
+| Asyncio                |        |         |        |        |              |              |
+|------------------------+--------+---------+--------+--------+--------------+--------------|
+| Callbacks              |  30000 |   18000 |      1 |      2 |            1 |            1 |
+| Coroutines             |  20000 |    9000 |      1 |      2 |            1 |            1 |
+| Coroutines and threads |   5000 |    3000 |      1 |      2 |           50 |            1 |
+| Streams                |   4500 |    2600 |      1 |      2 |           40 |            1 |
 
 ** Presentation
 
