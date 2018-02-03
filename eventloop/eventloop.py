@@ -1,4 +1,5 @@
 from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
+from types import GeneratorType
 
 # Possible states a future can be in
 _PENDING = 'PENDING'
@@ -39,9 +40,10 @@ class Future:
     def add_done_callback(self, fn):
         """ Schedule a callback to be called when the future resolves.
 
-        If the future is resolved, call immediatly.
+        If the future is resolved, call it immediatly.
         """
         if self._STATE == _FINISHED:
+        # Here, schedule callback on the event loop
             fn(self)
         else:
             self._callbacks.append(fn)
@@ -65,9 +67,7 @@ class Future:
     def _schedule_callbacks(self):
         """Run callbacks with self as single argument.
 
-        In asyncio, callbacks are not run immediatly but schedule to
-        be call soon in the event loop.
-
+        In asyncio, callbacks are not ran immediately but scheduled on the event loop.
         """
         for callback in self._callbacks:
             callback(self)
@@ -75,21 +75,45 @@ class Future:
         
 class Task(Future):
     """Coroutine wrapped in a future
+
+    Conventions:
+    - Only futures can be yielded directly
+    - Delegation to sub-generators is made using `yield from`
+    - As a convenience, futures are made iterable so they can be used w/ `yield from` as well
     """
-    def __init__(self, coro):
+    def __init__(self, coro, loop=None):
+        # TODO Instanciate a task with the thread's default IOLoop another one is explicitly passed
         super().__init__()
-        self.coro = coro
-            
-    def _step(self):
-        """Advance coroutine one step"""
+        self._coro = coro
+        self._loop = loop
+
+    def _step(self, sendval=None):
+        """Advance coroutine one step
+        """
+        # TODO Handle other possible types of yielded values
+        #     - A list of futures
         try:
-            result = self.coro.send(None)
-            result.add_done_callback(self._wakeup)
+            result = self._coro.send(sendval)
+            # 1. If a coroutine was yielded, wrap it in a future
+            if isinstance(result, GeneratorType):
+                result = Task(result)
+
+            # 2. If we now have a future, register ourselves to be woken up when it is resolved
+            if isinstance(result, Future):
+                result.add_done_callback(self._wakeup)
+                # 3. The future may need the event loop to advance it towards resolution
+                if isinstance(result, Task):
+                    self._loop.add_callback(result)
+            else:
+                self._loop.add_callback(self._wakeup)
         except StopIteration as exc:
             self.set_result(exc.value)
 
-    def _wakeup(self, future):
-        self._step()
+    def _wakeup(self, future=None):
+        # If awaken by a future that got resolved, feed its result to the coroutine
+        sendval = future.result() if future is not None else None
+        self._step(sendval)
+
 
 class EventLoop:
 
